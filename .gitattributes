@@ -1,0 +1,7 @@
+# Keep the repository's own files out of the zips Packagist serves to Composer.
+# A consuming application needs src/, autoload.php, composer.json, the README and
+# the LICENSE — not the test suite or the example worker.
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/tests export-ignore
+/example export-ignore
