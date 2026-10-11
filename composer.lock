@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "64a747f4e48762d2457c428d0df5047e",
+    "content-hash": "35e67bff6c51d5f66efe063e497676cd",
     "packages": [
         {
             "name": "psr/event-dispatcher",
@@ -306,7 +306,7 @@
             "dist": {
                 "type": "path",
                 "url": "../stokehold-php-sdk",
-                "reference": "7c6945fa788667d1f66ced89dcfd88e7d39f2f6a"
+                "reference": "52698651ca801ea32f6641b030693c68e9069ca7"
             },
             "require": {
                 "ext-hash": "*",
@@ -2011,7 +2011,8 @@
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
-        "sailantis/azera-framework": 20
+        "sailantis/azera-framework": 20,
+        "sailantis/stokehold-worker": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
