@@ -9,6 +9,7 @@ use Azera\Core\Dispatcher;
 use Azera\Core\Router;
 use Azera\Http\Request as AzeraRequest;
 use Azera\Http\Response as AzeraResponse;
+use Azera\Http\WorkerSession;
 use Azera\Stokehold\Http\Adapter\StokeholdToAzeraRequest;
 use Closure;
 use Clarity\Debug\DumpHaltException;
@@ -40,9 +41,10 @@ final class StokeholdHttpWorker
 
     /**
      * Native sessions are a SAPI service too, and a worker has no SAPI; this
-     * carries the session id in and the cookie back out.
+     * carries the session id in and the cookie back out. Shared with the
+     * RoadRunner adapter, which needs exactly the same two halves.
      */
-    private SessionBridge $session;
+    private WorkerSession $session;
 
     /**
      * @param Closure(string $path, string $method): AzeraResponse|null $notFoundHandler
@@ -55,7 +57,7 @@ final class StokeholdHttpWorker
         private readonly Dispatcher $dispatcher,
         private readonly ?Closure $notFoundHandler = null,
     ) {
-        $this->session = new SessionBridge();
+        $this->session = new WorkerSession();
     }
 
     /**
@@ -91,11 +93,7 @@ final class StokeholdHttpWorker
                 // cannot double-apply it. The session is part of that state: PHP
                 // leaves `session_id()` and `$_SESSION` behind in a long-lived
                 // process, and the next client must not inherit either.
-                if (session_status() === PHP_SESSION_ACTIVE) {
-                    session_write_close();
-                }
-                $_SESSION = [];
-                session_id('');
+                $this->session->end();
                 $_COOKIE = [];
 
                 $this->context->clearRequestScope();
@@ -137,9 +135,24 @@ final class StokeholdHttpWorker
             // The session cookie is the one header PHP would have written for
             // free under a SAPI, so it is added last — after the application's
             // own headers, as PHP's would be.
-            $this->session->cookie(self::headers($response->getHeaders())),
+            self::withSessionCookie(self::headers($response->getHeaders()), $this->session->cookie()),
             $response->getBody(),
         );
+    }
+
+    /**
+     * The session cookie, as an ordered pair like every other header.
+     *
+     * @param list<array{0: string, 1: string}> $headers
+     * @return list<array{0: string, 1: string}>
+     */
+    private static function withSessionCookie(array $headers, ?string $cookie): array
+    {
+        if ($cookie !== null) {
+            $headers[] = ['Set-Cookie', $cookie];
+        }
+
+        return $headers;
     }
 
     /**

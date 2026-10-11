@@ -41,6 +41,6 @@
         "sort-packages": true
     },
     "scripts": {
-        "test": "@php -d session.use_cookies=0 -d session.cache_limiter= vendor/bin/phpunit"
+        "test": "phpunit"
     }
 }

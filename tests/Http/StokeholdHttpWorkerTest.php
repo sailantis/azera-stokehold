@@ -41,6 +41,29 @@ final class EchoController extends Controller
     {
         throw new \RuntimeException('controller exploded');
     }
+
+    /**
+     * Writes to the session, so the worker has one to carry back to the client.
+     */
+    public function rememberAction(string $value): string
+    {
+        session_start();
+        $_SESSION['remembered'] = $value;
+
+        return 'stored';
+    }
+
+    /**
+     * Reads back what `rememberAction` wrote, to prove the session survived. The
+     * cookie the test sends is what the worker reads from the `Cookie` header;
+     * under a SAPI PHP does that itself.
+     */
+    public function recallAction(): string
+    {
+        session_start();
+
+        return (string) ($_SESSION['remembered'] ?? 'nothing');
+    }
 }
 
 final class StokeholdHttpWorkerTest extends TestCase
@@ -69,6 +92,8 @@ final class StokeholdHttpWorkerTest extends TestCase
         $router->add('GET', '/who', EchoController::class . '::whoAction');
         $router->add('POST', '/who', EchoController::class . '::whoAction');
         $router->add('GET', '/boom', EchoController::class . '::boomAction');
+        $router->add('GET', '/remember/{value}', EchoController::class . '::rememberAction');
+        $router->add('GET', '/recall', EchoController::class . '::recallAction');
 
         $dispatcher = new Dispatcher();
         $dispatcher->setBaseNamespace(__NAMESPACE__);
@@ -79,6 +104,22 @@ final class StokeholdHttpWorkerTest extends TestCase
             $dispatcher,
             $notFound === null ? null : \Closure::fromCallable($notFound),
         );
+    }
+
+    /**
+     * The header the worker added, or null.
+     *
+     * @param list<array{0: string, 1: string}> $headers
+     */
+    private static function cookieOf(StokeholdResponse $response): ?string
+    {
+        foreach ($response->headers as [$name, $value]) {
+            if (strcasecmp($name, 'Set-Cookie') === 0) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private static function bodyOf(StokeholdResponse $response): array
@@ -191,6 +232,71 @@ final class StokeholdHttpWorkerTest extends TestCase
         $this->assertSame(201, $response->status);
         $this->assertSame('{"ok":true}', $response->body);
         $this->assertContains(['X-Trace', 'abc'], $response->headers);
+    }
+
+    // ---------------------------------------------------------------------
+    // Sessions
+    // ---------------------------------------------------------------------
+
+    public function testASessionStartedByTheApplicationIsSentAsACookie(): void
+    {
+        $response = $this->worker()->dispatch(self::request('GET', '/remember/ada'));
+
+        $cookie = self::cookieOf($response);
+
+        $this->assertIsString($cookie, 'a session was started, so a cookie is owed');
+        $this->assertStringStartsWith(rawurlencode((string) session_name()) . '=', $cookie);
+    }
+
+    /**
+     * The whole point: the next request, presenting that cookie, sees what the
+     * previous one wrote — the job a SAPI does for free.
+     */
+    public function testASessionSurvivesIntoTheNextRequest(): void
+    {
+        $worker = $this->worker();
+
+        $cookie = (string) self::cookieOf($worker->dispatch(self::request('GET', '/remember/ada')));
+        $id = explode(';', explode('=', $cookie, 2)[1])[0];
+
+        $recalled = $worker->dispatch(
+            self::request('GET', '/recall', ['Cookie' => (string) session_name() . '=' . $id])
+        );
+
+        $this->assertSame('ada', $recalled->body);
+        $this->assertNull(
+            self::cookieOf($recalled),
+            'a client that already holds the id is not sent another cookie'
+        );
+    }
+
+    /**
+     * A worker reads the session id out of the `Cookie` header, so a hostile id
+     * must not reach the session handler: it becomes part of a file name.
+     */
+    public function testAHostileSessionIdIsRefusedAndGetsANewSession(): void
+    {
+        $response = $this->worker()->dispatch(
+            self::request('GET', '/recall', ['Cookie' => (string) session_name() . '=../../etc/passwd'])
+        );
+
+        $this->assertSame('nothing', $response->body);
+        $this->assertStringNotContainsString('passwd', (string) self::cookieOf($response));
+    }
+
+    /**
+     * `session_id()` outlives a request in a persistent process, so a client
+     * presenting no cookie must not inherit the previous client's session.
+     */
+    public function testAClientWithNoCookieDoesNotInheritThePreviousClientsSession(): void
+    {
+        $worker = $this->worker();
+
+        $worker->dispatch(self::request('GET', '/remember/first-client'));
+
+        $second = $worker->dispatch(self::request('GET', '/recall'));
+
+        $this->assertSame('nothing', $second->body);
     }
 
     // ---------------------------------------------------------------------

@@ -36,7 +36,7 @@ front_controller = "index.php"
 
 [backends.app]
 kind = "worker"
-command = "php -d session.use_cookies=0 -d session.cache_limiter= vendor/sailantis/azera-stokehold/azera-worker.php"
+command = "php vendor/sailantis/azera-stokehold/azera-worker.php"
 workers = 4
 ```
 
@@ -47,10 +47,7 @@ stokehold serve
 ```
 
 Stokehold serves static files from `document_root` itself and sends everything else to the worker, so the
-layout is the same as under nginx plus PHP-FPM.
-
-The two `-d` flags are required for sessions, and cannot be replaced by `ini_set()`. See
-[Sessions](#sessions).
+layout is the same as under nginx plus PHP-FPM. No `php -d` flags are needed: see [Sessions](#sessions).
 
 ---
 
@@ -64,7 +61,7 @@ stokehold (Rust)
   └─ http listener ──► framed protocol over stdin/stdout ──► azera-worker.php
                                                               ├─ WorkerBootstrap::boot()    (once)
                                                               └─ StokeholdHttpWorker::run() (per request)
-                                                                   ├─ SessionBridge::begin()
+                                                                   ├─ WorkerSession::begin()
                                                                    ├─ StokeholdToAzeraRequest
                                                                    ├─ Router → Dispatcher → Controller
                                                                    └─ clearRequestScope()      (after each)
@@ -86,26 +83,25 @@ is what a SAPI does for free, and this package does all of it:
 
 ## Sessions
 
-Sessions work, but a worker has to be started with `session.use_cookies` off:
+Sessions work with no special configuration, because PHP's own session cookie handling cannot be used in a
+worker. `header()`, `setcookie()` and `headers_list()` are all no-ops under a worker's SAPI, so a
+`Set-Cookie` PHP writes would never reach the client. `WorkerSession` (in `sailera/azera-framework`; every
+adapter needs the same two halves) therefore:
 
-```toml
-command = "php -d session.use_cookies=0 -d session.cache_limiter= vendor/sailantis/azera-stokehold/azera-worker.php"
-```
+- reads the session id from the request's `Cookie` header before the application runs, so
+  `SessionMiddleware` finds it exactly as it would under FPM, and
+- builds the `Set-Cookie` for a session started during the request, for the adapter to put on the response.
 
-This is not a preference. PHP refuses to start a session when `session.use_cookies` is on and
-`headers_sent` is already true, and under the CLI SAPI `headers_sent` is true from process startup — so
-without the flag **no session can be started in a worker at all**, and flash messages, logins and CSRF
-tokens silently stop persisting. It cannot be worked around from inside PHP: `ini_set()` is refused for
-session settings once headers have been sent, in exactly the same way `session_name()` is.
+It also relaxes `session.use_cookies` and `session.cache_limiter` at the start of each request, so PHP does
+not waste effort on a cookie it cannot send — and stops it emitting `Cache-Control` headers, and a warning,
+through the same dead channel. An id the client *did* send is still adopted, so a returning client keeps its
+session.
 
-With cookies off, the package does both halves itself: it sets the session id from the request's `Cookie`
-header before the application runs, and appends the `Set-Cookie` to the response afterwards. The id is
-cleared between requests, so a client that presents no cookie is never handed the previous client's session.
-`session.name` and the `session.cookie_*` settings are still honoured — set the name on the command line
-with `-d session.name=_s`, since `session_name()` will not apply it.
+The id is cleared between requests. `session_id()` outlives the request in a persistent process, so a client
+presenting no cookie would otherwise be handed the session left behind by the previous client.
 
-Without the flag the worker starts anyway and prints a one-line warning to stderr the first time a request
-would have used a session, rather than failing obscurely.
+`session.name` and the `session.cookie_*` settings are honoured as usual, so a custom cookie name is set the
+way it always was — `session_name('_s')` in the worker's customisation file.
 
 ---
 
@@ -133,10 +129,9 @@ return static function (AppContext $ctx): ?Closure {
 ```
 
 The callable receives the booted `AppContext` and may return a not-found handler (`string $path,
-string $method` → `Azera\Http\Response`, or `null` for a plain 404).
-
-Do not call `session_name()` here — in a worker it only emits a warning and changes nothing. Use
-`-d session.name=` in the worker command.
+string $method` → `Azera\Http\Response`, or `null` for a plain 404). It runs before the first request, so it
+is also the place for session settings — `session_name('_s')` — since PHP only refuses to change those once
+a session is active.
 
 ---
 
@@ -152,9 +147,8 @@ different:
   recognised as JSON there. Here the environment is built the way the CGI specification says.
 - **No reflection.** Azera's `Request` now has a `setRawBody()` method instead of the private-property poke
   the RoadRunner adapter previously needed.
-- **Sessions work.** The RoadRunner adapter has no session support, and its worker has the same CLI-SAPI
-  problem described above, so `session_start()` fails there too. This package reads the id in and writes the
-  `Set-Cookie` out.
+- **Sessions work.** The RoadRunner adapter had no session support at all, so `session_start()` succeeded
+  but the session id never left the process. Both adapters now share `Azera\Http\WorkerSession`.
 - **`dd()` cannot kill the worker.** In halt mode it becomes a 500 carrying the dump, as on RoadRunner.
 
 ---
