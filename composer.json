@@ -32,6 +32,11 @@
         "issues": "https://github.com/sailantis/azera-stokehold/issues",
         "source": "https://github.com/sailantis/azera-stokehold"
     },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    },
     "config": {
         "sort-packages": true
     },

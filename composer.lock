@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ed5fb471f0d775e07e91409d321b8e44",
+    "content-hash": "dfd16cb7fd0bfe71cadaf6a9c8d99248",
     "packages": [
         {
             "name": "psr/event-dispatcher",
@@ -163,7 +163,7 @@
             "dist": {
                 "type": "path",
                 "url": "../azera-framework",
-                "reference": "78444bfdedf1ac6a33d637a88620b5b55fddd74b"
+                "reference": "c891bc5d45868017b156a32772996a5741f1314c"
             },
             "require": {
                 "ext-mbstring": "*",
@@ -306,7 +306,7 @@
             "dist": {
                 "type": "path",
                 "url": "../stokehold-php-sdk",
-                "reference": "5d471264c13aef8a62193e165195840a4d787621"
+                "reference": "7c6945fa788667d1f66ced89dcfd88e7d39f2f6a"
             },
             "require": {
                 "ext-hash": "*",
