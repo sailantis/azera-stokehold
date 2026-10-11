@@ -11,7 +11,7 @@
     "require": {
         "php": ">=8.2",
         "sailantis/azera-framework": "dev-main",
-        "sailantis/stokehold-worker": "^0.1"
+        "sailantis/stokehold-worker": "^0.1.1"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.5"
