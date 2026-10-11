@@ -142,13 +142,10 @@ different:
 
 - **No PSR-7 hop.** RoadRunner's worker hands you PSR-7, so that adapter converts PSR-7 → Azera. Stokehold's
   protocol already speaks CGI, so there is no intermediate message to build and no `nyholm/psr7` dependency.
-- **`CONTENT_TYPE` is a CGI variable, not `HTTP_CONTENT_TYPE`.** This matters: Azera reads `CONTENT_TYPE` for
-  `contentType()` and `isJson()`. The RoadRunner adapter maps every header to `HTTP_*`, so a JSON body is not
-  recognised as JSON there. Here the environment is built the way the CGI specification says.
 - **No reflection.** Azera's `Request` now has a `setRawBody()` method instead of the private-property poke
   the RoadRunner adapter previously needed.
-- **Sessions work.** The RoadRunner adapter had no session support at all, so `session_start()` succeeded
-  but the session id never left the process. Both adapters now share `Azera\Http\WorkerSession`.
+- **Sessions work.** Both adapters share `Azera\Http\WorkerSession`, which carries the session id in from
+  the `Cookie` header and the `Set-Cookie` back out, since a worker's SAPI has no header channel.
 - **`dd()` cannot kill the worker.** In halt mode it becomes a 500 carrying the dump, as on RoadRunner.
 
 ---
