@@ -39,6 +39,12 @@ final class StokeholdHttpWorker
     private const DUMP_STATUS = 500;
 
     /**
+     * Native sessions are a SAPI service too, and a worker has no SAPI; this
+     * carries the session id in and the cookie back out.
+     */
+    private SessionBridge $session;
+
+    /**
      * @param Closure(string $path, string $method): AzeraResponse|null $notFoundHandler
      *        Invoked when no route matches. Return a response to send it, or
      *        null to fall back to a plain 404.
@@ -49,6 +55,7 @@ final class StokeholdHttpWorker
         private readonly Dispatcher $dispatcher,
         private readonly ?Closure $notFoundHandler = null,
     ) {
+        $this->session = new SessionBridge();
     }
 
     /**
@@ -81,7 +88,16 @@ final class StokeholdHttpWorker
             } finally {
                 // Reset per-request state before the next request is read.
                 // `clearRequestScope()` is idempotent, so the early returns above
-                // cannot double-apply it.
+                // cannot double-apply it. The session is part of that state: PHP
+                // leaves `session_id()` and `$_SESSION` behind in a long-lived
+                // process, and the next client must not inherit either.
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    session_write_close();
+                }
+                $_SESSION = [];
+                session_id('');
+                $_COOKIE = [];
+
                 $this->context->clearRequestScope();
             }
         });
@@ -102,6 +118,11 @@ final class StokeholdHttpWorker
         // would otherwise be handed to the next request as well.
         $this->context->set(AzeraRequest::class, $azeraRequest);
 
+        // Adopt the client's session before the application runs, so the
+        // session middleware finds `$_COOKIE` the way it would under FPM.
+        $_COOKIE = $request->cookies();
+        $this->session->begin($_COOKIE);
+
         $path = $azeraRequest->path();
         $method = $azeraRequest->method();
 
@@ -113,7 +134,10 @@ final class StokeholdHttpWorker
 
         return new StokeholdResponse(
             $response->getStatus(),
-            self::headers($response->getHeaders()),
+            // The session cookie is the one header PHP would have written for
+            // free under a SAPI, so it is added last — after the application's
+            // own headers, as PHP's would be.
+            $this->session->cookie(self::headers($response->getHeaders())),
             $response->getBody(),
         );
     }

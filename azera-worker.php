@@ -16,8 +16,8 @@ declare(strict_types=1);
  * each request, so nothing leaks from one request into the next.
  *
  * An application does not need to change this file. To customise the worker —
- * a friendly 404, a session cookie name — put a `stokehold-worker.php` in the
- * project root that returns a callable:
+ * a friendly 404, or one-time setup that needs the booted container — put a
+ * `stokehold-worker.php` in the project root that returns a callable:
  *
  *     <?php
  *     return static function (AppContext $ctx): ?Closure {
