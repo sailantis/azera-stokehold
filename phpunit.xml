@@ -5,7 +5,7 @@
          colors="true"
          failOnWarning="true">
     <testsuites>
-        <testsuite name="azera-stokehold">
+        <testsuite name="azera-volucer">
             <directory>tests</directory>
         </testsuite>
     </testsuites>

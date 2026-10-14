@@ -1,13 +1,13 @@
-# azera-stokehold
+# azera-volucer
 
 Application-server adapter that lets [Azera](https://github.com/Sailantis/azera-framework) run on top of
-[stokehold](https://github.com/sailantis/stokehold). stokehold (a Rust application server) runs persistent
+[volucer](https://github.com/sailantis/volucer). volucer (a Rust application server) runs persistent
 PHP workers, so your app boots **once** and stays resident, reusing database/cache/queue connections across
 requests — while Azera's Router, Dispatcher, DI container and middleware pipeline work exactly as they do
 under PHP-FPM.
 
 This package serves **HTTP**. It sits on top of
-[`sailantis/stokehold-worker`](https://github.com/sailantis/stokehold-php-sdk), the PHP SDK for stokehold's
+[`sailantis/volucer-worker`](https://github.com/sailantis/volucer-php-sdk), the PHP SDK for volucer's
 worker protocol; that package is the transport, this one is the framework glue.
 
 ---
@@ -15,16 +15,16 @@ worker protocol; that package is the transport, this one is the framework glue.
 ## Installation
 
 ```bash
-composer require sailantis/azera-stokehold
+composer require sailantis/azera-volucer
 ```
 
-> Requires PHP >= 8.2, the `sailantis/azera-framework` package, and a `stokehold` binary on the host.
+> Requires PHP >= 8.2, the `sailantis/azera-framework` package, and a `volucer` binary on the host.
 
 ---
 
 ## Quick start
 
-Point a `worker` backend at the entry point in your stokehold configuration:
+Point a `worker` backend at the entry point in your volucer configuration:
 
 ```toml
 default_backend = "app"
@@ -36,33 +36,33 @@ front_controller = "index.php"
 
 [backends.app]
 kind = "worker"
-command = "php vendor/sailantis/azera-stokehold/azera-worker.php"
+command = "php vendor/sailantis/azera-volucer/azera-worker.php"
 workers = 4
 ```
 
 Then start the server. Your existing routes, controllers, middleware and templates run unchanged:
 
 ```bash
-stokehold serve
+volucer serve
 ```
 
-Stokehold serves static files from `document_root` itself and sends everything else to the worker, so the
+Volucer serves static files from `document_root` itself and sends everything else to the worker, so the
 layout is the same as under nginx plus PHP-FPM. No `php -d` flags are needed: see [Sessions](#sessions).
 
 ---
 
 ## How it works
 
-Stokehold spawns worker processes and speaks its own framed protocol to each one over stdin/stdout. The
+Volucer spawns worker processes and speaks its own framed protocol to each one over stdin/stdout. The
 worker boots the application once, then serves every request from the same process:
 
 ```text
-stokehold (Rust)
+volucer (Rust)
   └─ http listener ──► framed protocol over stdin/stdout ──► azera-worker.php
                                                               ├─ WorkerBootstrap::boot()    (once)
-                                                              └─ StokeholdHttpWorker::run() (per request)
+                                                              └─ VolucerHttpWorker::run() (per request)
                                                                    ├─ WorkerSession::begin()
-                                                                   ├─ StokeholdToAzeraRequest
+                                                                   ├─ VolucerToAzeraRequest
                                                                    ├─ Router → Dispatcher → Controller
                                                                    └─ clearRequestScope()      (after each)
 ```
@@ -108,7 +108,7 @@ way it always was — `session_name('_s')` in the worker's customisation file.
 ## Customising the worker
 
 An application does not need to change the entry point. For a friendly 404, or any one-time setup that
-needs the booted container, add a `stokehold-worker.php` to the project root that returns a callable:
+needs the booted container, add a `volucer-worker.php` to the project root that returns a callable:
 
 ```php
 <?php
@@ -140,7 +140,7 @@ a session is active.
 Same architecture, different transport — and a few things are deliberately better rather than merely
 different:
 
-- **No PSR-7 hop.** RoadRunner's worker hands you PSR-7, so that adapter converts PSR-7 → Azera. Stokehold's
+- **No PSR-7 hop.** RoadRunner's worker hands you PSR-7, so that adapter converts PSR-7 → Azera. Volucer's
   protocol already speaks CGI, so there is no intermediate message to build and no `nyholm/psr7` dependency.
 - **No reflection.** Azera's `Request` now has a `setRawBody()` method instead of the private-property poke
   the RoadRunner adapter previously needed.
@@ -156,7 +156,7 @@ different:
 composer test
 ```
 
-The suite runs without PHP-FPM, a socket, or a stokehold binary: the worker is driven over in-memory streams
+The suite runs without PHP-FPM, a socket, or a volucer binary: the worker is driven over in-memory streams
 carrying real protocol frames, so the loop, the translation, the response framing and the per-request reset
 are all asserted against the actual bytes a server would send and receive.
 

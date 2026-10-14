@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Azera\Stokehold\Tests\Http\Adapter;
+namespace Azera\Volucer\Tests\Http\Adapter;
 
 use Azera\Http\Request as AzeraRequest;
-use Azera\Stokehold\Http\Adapter\StokeholdToAzeraRequest;
+use Azera\Volucer\Http\Adapter\VolucerToAzeraRequest;
 use PHPUnit\Framework\TestCase;
-use Stokehold\Request as StokeholdRequest;
+use Volucer\Request as VolucerRequest;
 
-final class StokeholdToAzeraRequestTest extends TestCase
+final class VolucerToAzeraRequestTest extends TestCase
 {
     /**
      * @param array<string, string> $headers
@@ -21,8 +21,8 @@ final class StokeholdToAzeraRequestTest extends TestCase
         string $body = '',
         string $remoteAddr = '127.0.0.1',
         bool $https = false,
-    ): StokeholdRequest {
-        return new StokeholdRequest(
+    ): VolucerRequest {
+        return new VolucerRequest(
             method: $method,
             uri: $uri,
             protocol: 'HTTP/1.1',
@@ -36,7 +36,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
 
     public function testCarriesMethodPathAndQuery(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(
+        $azera = VolucerToAzeraRequest::convert(
             self::request('GET', '/users/42?active=1&tag=a&tag=b')
         );
 
@@ -49,7 +49,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
 
     public function testInjectsTheBodyRatherThanLettingBodyReadThePipe(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(
+        $azera = VolucerToAzeraRequest::convert(
             self::request('POST', '/x', ['Content-Type' => 'application/json'], '{"a":1}')
         );
 
@@ -66,7 +66,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
      */
     public function testAnEmptyBodyIsInjectedRatherThanLeftUnset(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request('GET', '/'));
+        $azera = VolucerToAzeraRequest::convert(self::request('GET', '/'));
 
         $property = new \ReflectionProperty(AzeraRequest::class, 'rawBody');
         $property->setAccessible(true);
@@ -81,7 +81,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
      */
     public function testContentTypeKeepsItsCgiName(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(
+        $azera = VolucerToAzeraRequest::convert(
             self::request('POST', '/x', ['Content-Type' => 'application/json'], '{}')
         );
 
@@ -92,7 +92,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
 
     public function testParsesAFormUrlencodedBodyIntoPost(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request(
+        $azera = VolucerToAzeraRequest::convert(self::request(
             'POST',
             '/login',
             ['Content-Type' => 'application/x-www-form-urlencoded'],
@@ -109,7 +109,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
 
     public function testParsesAFormBodyWhoseMediaTypeCarriesParameters(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request(
+        $azera = VolucerToAzeraRequest::convert(self::request(
             'POST',
             '/login',
             ['Content-Type' => 'application/x-www-form-urlencoded; charset=UTF-8'],
@@ -126,7 +126,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
      */
     public function testDoesNotParseAJsonBodyIntoPost(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(
+        $azera = VolucerToAzeraRequest::convert(
             self::request('POST', '/x', ['Content-Type' => 'application/json'], '{"user":"ada"}')
         );
 
@@ -135,12 +135,12 @@ final class StokeholdToAzeraRequestTest extends TestCase
     }
 
     /**
-     * Multipart needs the boundary handling and uploads stokehold does not
+     * Multipart needs the boundary handling and uploads volucer does not
      * carry yet. Leaving POST empty is honest; half-parsing it would not be.
      */
     public function testDoesNotHalfParseMultipart(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request(
+        $azera = VolucerToAzeraRequest::convert(self::request(
             'POST',
             '/upload',
             ['Content-Type' => 'multipart/form-data; boundary=----x'],
@@ -157,7 +157,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
      */
     public function testABodyWithNoDeclaredTypeGetsTheFormDefault(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request('POST', '/x', [], 'a=1'));
+        $azera = VolucerToAzeraRequest::convert(self::request('POST', '/x', [], 'a=1'));
 
         $this->assertSame('application/x-www-form-urlencoded', $azera->contentType());
         $this->assertSame(['a' => '1'], $azera->post());
@@ -169,7 +169,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
      */
     public function testABodylessRequestHasNoContentTypeAndNoPost(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request('GET', '/x'));
+        $azera = VolucerToAzeraRequest::convert(self::request('GET', '/x'));
 
         $this->assertSame('', $azera->contentType());
         $this->assertSame([], $azera->post());
@@ -177,7 +177,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
 
     public function testTrustsProxyHeadersForSchemeHostAndClientIp(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request(
+        $azera = VolucerToAzeraRequest::convert(self::request(
             'GET',
             '/',
             [
@@ -199,7 +199,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
 
     public function testAHttpsRequestIsSecureWithoutProxyHeaders(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request('GET', '/', [], '', '127.0.0.1', true));
+        $azera = VolucerToAzeraRequest::convert(self::request('GET', '/', [], '', '127.0.0.1', true));
 
         $this->assertTrue($azera->isSecure());
         $this->assertSame('on', $azera->server('HTTPS'));
@@ -207,7 +207,7 @@ final class StokeholdToAzeraRequestTest extends TestCase
 
     public function testCarriesTheScriptFilenameAndRemoteAddr(): void
     {
-        $azera = StokeholdToAzeraRequest::convert(self::request());
+        $azera = VolucerToAzeraRequest::convert(self::request());
 
         $this->assertSame('/srv/app/public/index.php', $azera->server('SCRIPT_FILENAME'));
         $this->assertSame('127.0.0.1', $azera->server('REMOTE_ADDR'));

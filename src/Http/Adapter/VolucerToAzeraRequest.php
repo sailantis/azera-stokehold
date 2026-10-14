@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Azera\Stokehold\Http\Adapter;
+namespace Azera\Volucer\Http\Adapter;
 
 use Azera\Http\Request as AzeraRequest;
-use Stokehold\Request as StokeholdRequest;
+use Volucer\Request as VolucerRequest;
 
 /**
- * Converts a stokehold request into an Azera {@see AzeraRequest}.
+ * Converts a volucer request into an Azera {@see AzeraRequest}.
  *
- * The two are closer than they look: stokehold speaks the CGI environment
- * natively, and {@see StokeholdRequest::serverVars()} already produces the
+ * The two are closer than they look: volucer speaks the CGI environment
+ * natively, and {@see VolucerRequest::serverVars()} already produces the
  * `$_SERVER`-shaped array Azera's Request is built around — including the CGI
  * naming rules, where `Content-Type` becomes `CONTENT_TYPE` rather than
  * `HTTP_CONTENT_TYPE`, and `CONTENT_LENGTH` is the length of the body actually
@@ -19,7 +19,7 @@ use Stokehold\Request as StokeholdRequest;
  * from PHP that a worker has to do itself: the parsed form body, and the raw
  * body.
  */
-final class StokeholdToAzeraRequest
+final class VolucerToAzeraRequest
 {
     /**
      * Media types whose bodies PHP parses into `$_POST`.
@@ -30,12 +30,12 @@ final class StokeholdToAzeraRequest
      * from JSON would be behaviour FPM never had.
      *
      * `multipart/form-data` is a form type too, but parsing it needs the
-     * boundary handling and the uploads stokehold does not carry yet, so it is
+     * boundary handling and the uploads volucer does not carry yet, so it is
      * left unparsed rather than half-parsed.
      */
     private const FORM_MEDIA_TYPE = 'application/x-www-form-urlencoded';
 
-    public static function convert(StokeholdRequest $request): AzeraRequest
+    public static function convert(VolucerRequest $request): AzeraRequest
     {
         $server = $request->serverVars();
 
@@ -47,7 +47,7 @@ final class StokeholdToAzeraRequest
         // while it is populated under `php-cgi`.
         $post = self::post($server['CONTENT_TYPE'] ?? '', $request->body);
 
-        // Proxy-header trust, mirroring the RoadRunner adapter: stokehold is
+        // Proxy-header trust, mirroring the RoadRunner adapter: volucer is
         // expected to sit behind a reverse proxy, so scheme(), host(), port()
         // and clientIp() should honour X-Forwarded-* as they do under FPM.
         $azera = new AzeraRequest($server, $request->query(), $post, [], true);
@@ -67,7 +67,7 @@ final class StokeholdToAzeraRequest
      *
      * PHP parses the body only for the form media types and leaves `$_POST`
      * empty otherwise. Multipart is deliberately not parsed: it needs the
-     * boundary handling — and the uploads — that stokehold does not carry yet,
+     * boundary handling — and the uploads — that volucer does not carry yet,
      * and a half-parsed multipart body would be worse than an empty one.
      *
      * @return array<string, mixed>

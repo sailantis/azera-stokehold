@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Azera\Stokehold\Http;
+namespace Azera\Volucer\Http;
 
 use Azera\AppContext;
 use Azera\Core\Dispatcher;
@@ -10,19 +10,19 @@ use Azera\Core\Router;
 use Azera\Http\Request as AzeraRequest;
 use Azera\Http\Response as AzeraResponse;
 use Azera\Http\WorkerSession;
-use Azera\Stokehold\Http\Adapter\StokeholdToAzeraRequest;
+use Azera\Volucer\Http\Adapter\VolucerToAzeraRequest;
 use Closure;
 use Clarity\Debug\DumpHaltException;
-use Stokehold\Request as StokeholdRequest;
-use Stokehold\Response as StokeholdResponse;
-use Stokehold\Worker;
+use Volucer\Request as VolucerRequest;
+use Volucer\Response as VolucerResponse;
+use Volucer\Worker;
 use Throwable;
 
 /**
- * Persistent HTTP worker loop for stokehold.
+ * Persistent HTTP worker loop for volucer.
  *
  * Reuses the Azera {@see Router} and {@see Dispatcher} pipeline unchanged: each
- * stokehold request is translated to an Azera request, matched against the
+ * volucer request is translated to an Azera request, matched against the
  * router, and dispatched to the controller. After the response has been sent,
  * per-request state is reset so nothing leaks into the next request.
  *
@@ -31,7 +31,7 @@ use Throwable;
  * client, so the response is always read through its getters and handed to the
  * SDK as a value.
  */
-final class StokeholdHttpWorker
+final class VolucerHttpWorker
 {
     /**
      * The framework's `dd()` dump is answered as a 500 whatever it contains.
@@ -67,11 +67,11 @@ final class StokeholdHttpWorker
     {
         $worker ??= Worker::create();
 
-        $worker->run(function (StokeholdRequest $request, Worker $worker): StokeholdResponse {
+        $worker->run(function (VolucerRequest $request, Worker $worker): VolucerResponse {
             try {
                 return $this->dispatch($request);
             } catch (DumpHaltException $halt) {
-                return new StokeholdResponse(
+                return new VolucerResponse(
                     self::DUMP_STATUS,
                     [['Content-Type', self::dumpContentType($halt->context)]],
                     $halt->output,
@@ -82,7 +82,7 @@ final class StokeholdHttpWorker
                 // the throwable to stderr, which is not the protocol channel.
                 $worker->emitLog('unhandled error: ' . $error->getMessage(), 'error');
 
-                return new StokeholdResponse(
+                return new VolucerResponse(
                     500,
                     [['Content-Type', 'text/plain; charset=utf-8']],
                     'Internal Server Error',
@@ -102,13 +102,13 @@ final class StokeholdHttpWorker
     }
 
     /**
-     * Run the Router + Dispatcher pipeline against one stokehold request.
+     * Run the Router + Dispatcher pipeline against one volucer request.
      *
      * Public and free of I/O so the pipeline can be tested without a pipe.
      */
-    public function dispatch(StokeholdRequest $request): StokeholdResponse
+    public function dispatch(VolucerRequest $request): VolucerResponse
     {
-        $azeraRequest = StokeholdToAzeraRequest::convert($request);
+        $azeraRequest = VolucerToAzeraRequest::convert($request);
 
         // The framework's request() reads this out of the container. Setting it
         // on every request is not decoration: `clearRequestScope()` only clears
@@ -130,7 +130,7 @@ final class StokeholdHttpWorker
             ? $this->notFound($path, $method)
             : $this->dispatcher->dispatch($route);
 
-        return new StokeholdResponse(
+        return new VolucerResponse(
             $response->getStatus(),
             // The session cookie is the one header PHP would have written for
             // free under a SAPI, so it is added last — after the application's

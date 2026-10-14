@@ -3,13 +3,13 @@
 declare(strict_types=1);
 
 /**
- * stokehold worker entry point for an Azera application.
+ * volucer worker entry point for an Azera application.
  *
  * Point a `kind = "worker"` backend at this file:
  *
  *     [backends.app]
  *     kind = "worker"
- *     command = "php vendor/sailantis/azera-stokehold/azera-worker.php"
+ *     command = "php vendor/sailantis/azera-volucer/azera-worker.php"
  *
  * The application is booted once and then stays resident, serving every request
  * from the same process. Per-request state is reset by the worker loop after
@@ -17,7 +17,7 @@ declare(strict_types=1);
  *
  * An application does not need to change this file. To customise the worker —
  * a friendly 404, or one-time setup that needs the booted container — put a
- * `stokehold-worker.php` in the project root that returns a callable:
+ * `volucer-worker.php` in the project root that returns a callable:
  *
  *     <?php
  *     return static function (AppContext $ctx): ?Closure {
@@ -31,8 +31,8 @@ declare(strict_types=1);
 
 use Azera\AppContext;
 use Azera\Http\Response as AzeraResponse;
-use Azera\Stokehold\Http\StokeholdHttpWorker;
-use Azera\Stokehold\WorkerBootstrap;
+use Azera\Volucer\Http\VolucerHttpWorker;
+use Azera\Volucer\WorkerBootstrap;
 
 // The worker is started by the server with the application as its working
 // directory, so that is the project root unless it is overridden.
@@ -64,14 +64,14 @@ WorkerBootstrap::enableDumpHalt($context);
 // 2. Application-specific worker configuration, if it wants any
 // ---------------------------------------------------------------------------
 $notFoundHandler = null;
-$customise = $projectRoot . '/stokehold-worker.php';
+$customise = $projectRoot . '/volucer-worker.php';
 
 if (is_file($customise)) {
     /** @var mixed $callable */
     $callable = require $customise;
 
     if (!is_callable($callable)) {
-        throw new RuntimeException('stokehold-worker.php must return a callable.');
+        throw new RuntimeException('volucer-worker.php must return a callable.');
     }
 
     /** @var mixed $handler */
@@ -79,7 +79,7 @@ if (is_file($customise)) {
 
     if ($handler !== null && !$handler instanceof Closure) {
         throw new RuntimeException(
-            'stokehold-worker.php must return a Closure or null, got ' . get_debug_type($handler) . '.'
+            'volucer-worker.php must return a Closure or null, got ' . get_debug_type($handler) . '.'
         );
     }
 
@@ -89,7 +89,7 @@ if (is_file($customise)) {
 // ---------------------------------------------------------------------------
 // 3. Serve until the server closes the pipe
 // ---------------------------------------------------------------------------
-$worker = new StokeholdHttpWorker(
+$worker = new VolucerHttpWorker(
     $context,
     $context->router(),
     $context->dispatcher(),

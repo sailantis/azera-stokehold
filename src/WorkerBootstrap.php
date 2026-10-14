@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Azera\Stokehold;
+namespace Azera\Volucer;
 
 use Azera\AppContext;
 use Azera\Boot\BootstrapDiscovery;
@@ -10,9 +10,9 @@ use Azera\Boot\BootstrapResolver;
 use Azera\Core\Engines\ClarityEngine;
 
 /**
- * Bootstraps the Azera AppContext for a stokehold worker.
+ * Bootstraps the Azera AppContext for a volucer worker.
  *
- * A stokehold worker is a long-lived PHP process, so the application is booted
+ * A volucer worker is a long-lived PHP process, so the application is booted
  * exactly once — not per request. This resolves the application's
  * BootstrapProvider through the same chain the framework CLI uses, runs it, and
  * returns the shared {@see AppContext}.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Azera\Stokehold\Tests\Http;
+namespace Azera\Volucer\Tests\Http;
 
 use Azera\AppContext;
 use Azera\Core\Controller;
@@ -10,14 +10,14 @@ use Azera\Core\Dispatcher;
 use Azera\Core\Router;
 use Azera\Http\Request as AzeraRequest;
 use Azera\Http\Response as AzeraResponse;
-use Azera\Stokehold\Http\StokeholdHttpWorker;
+use Azera\Volucer\Http\VolucerHttpWorker;
 use PHPUnit\Framework\TestCase;
-use Stokehold\Frame;
-use Stokehold\Header;
-use Stokehold\MessageType;
-use Stokehold\Request as StokeholdRequest;
-use Stokehold\Response as StokeholdResponse;
-use Stokehold\Worker;
+use Volucer\Frame;
+use Volucer\Header;
+use Volucer\MessageType;
+use Volucer\Request as VolucerRequest;
+use Volucer\Response as VolucerResponse;
+use Volucer\Worker;
 
 /**
  * A controller whose one action proves which request it is serving.
@@ -66,15 +66,15 @@ final class EchoController extends Controller
     }
 }
 
-final class StokeholdHttpWorkerTest extends TestCase
+final class VolucerHttpWorkerTest extends TestCase
 {
     private static function request(
         string $method = 'GET',
         string $uri = '/who',
         array $headers = [],
         string $body = '',
-    ): StokeholdRequest {
-        return new StokeholdRequest(
+    ): VolucerRequest {
+        return new VolucerRequest(
             method: $method,
             uri: $uri,
             protocol: 'HTTP/1.1',
@@ -86,7 +86,7 @@ final class StokeholdHttpWorkerTest extends TestCase
         );
     }
 
-    private function worker(?callable $notFound = null): StokeholdHttpWorker
+    private function worker(?callable $notFound = null): VolucerHttpWorker
     {
         $router = new Router();
         $router->add('GET', '/who', EchoController::class . '::whoAction');
@@ -98,7 +98,7 @@ final class StokeholdHttpWorkerTest extends TestCase
         $dispatcher = new Dispatcher();
         $dispatcher->setBaseNamespace(__NAMESPACE__);
 
-        return new StokeholdHttpWorker(
+        return new VolucerHttpWorker(
             AppContext::instance(),
             $router,
             $dispatcher,
@@ -111,7 +111,7 @@ final class StokeholdHttpWorkerTest extends TestCase
      *
      * @param list<array{0: string, 1: string}> $headers
      */
-    private static function cookieOf(StokeholdResponse $response): ?string
+    private static function cookieOf(VolucerResponse $response): ?string
     {
         foreach ($response->headers as [$name, $value]) {
             if (strcasecmp($name, 'Set-Cookie') === 0) {
@@ -122,7 +122,7 @@ final class StokeholdHttpWorkerTest extends TestCase
         return null;
     }
 
-    private static function bodyOf(StokeholdResponse $response): array
+    private static function bodyOf(VolucerResponse $response): array
     {
         return self::jsonOf($response->body);
     }
@@ -356,7 +356,7 @@ final class StokeholdHttpWorkerTest extends TestCase
 
         $worker = new Worker($in, $out, self::sink());
 
-        (new StokeholdHttpWorker(
+        (new VolucerHttpWorker(
             AppContext::instance(),
             (static function (): Router {
                 $router = new Router();

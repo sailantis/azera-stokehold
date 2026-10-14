@@ -301,11 +301,11 @@
             }
         },
         {
-            "name": "sailantis/stokehold-worker",
+            "name": "sailantis/volucer-worker",
             "version": "dev-main",
             "dist": {
                 "type": "path",
-                "url": "../stokehold-php-sdk",
+                "url": "../volucer-php-sdk",
                 "reference": "52698651ca801ea32f6641b030693c68e9069ca7"
             },
             "require": {
@@ -321,12 +321,12 @@
             },
             "autoload": {
                 "psr-4": {
-                    "Stokehold\\": "src/"
+                    "Volucer\\": "src/"
                 }
             },
             "autoload-dev": {
                 "psr-4": {
-                    "Stokehold\\Tests\\": "tests/"
+                    "Volucer\\Tests\\": "tests/"
                 }
             },
             "scripts": {
@@ -337,17 +337,17 @@
             "license": [
                 "MIT"
             ],
-            "description": "The PHP worker SDK for stokehold: serves requests over the stokehold worker protocol.",
+            "description": "The PHP worker SDK for volucer: serves requests over the volucer worker protocol.",
             "keywords": [
                 "application-server",
                 "php-fpm",
                 "roadrunner",
-                "stokehold",
+                "volucer",
                 "worker"
             ],
             "support": {
-                "issues": "https://github.com/sailantis/stokehold-php-sdk/issues",
-                "source": "https://github.com/sailantis/stokehold-php-sdk"
+                "issues": "https://github.com/sailantis/volucer-php-sdk/issues",
+                "source": "https://github.com/sailantis/volucer-php-sdk"
             },
             "transport-options": {
                 "relative": true
@@ -2012,7 +2012,7 @@
     "minimum-stability": "dev",
     "stability-flags": {
         "sailantis/azera-framework": 20,
-        "sailantis/stokehold-worker": 20
+        "sailantis/volucer-worker": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
